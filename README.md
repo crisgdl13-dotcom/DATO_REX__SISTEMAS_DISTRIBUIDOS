@@ -48,11 +48,10 @@ Paso 3. Ejecutar la aplicación cliente
 Dentro de la carpeta DATO_REX__SISTEMAS_DISTRIBUIDOS, inicie el cliente gráfico:
 
 En Windows:
-
 PowerShell
 python cliente.py
-En GNU/Linux o macOS:
 
+En GNU/Linux o macOS:
 Bash
 python3 cliente.py
 
