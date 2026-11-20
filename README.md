@@ -21,11 +21,19 @@ Clientes (Tkinter)  <--- TCP, un JSON por línea (\n) --->  servidor.py (puerto 
 * **Servidor (`servidor.py`):** Demonio concurrente sin interfaz gráfica (`threading` + `Lock`) que gestiona conexiones, autenticación, enrutamiento de mensajes y consultas SQL.
 * **Base de datos (`Dato_Rex_DB`):** Instancia de SQL Server en puerto `1433` que almacena usuarios, avatares, grupos, canales e historiales de mensajes.
 
-## Ejecutar el cliente
+## Instrucciones / Cliente
+1. Ejecutar el programa cliente "cliente.py".
+2. Crear usuario y contraseña.
+3. Insertar foto de perfil de usuario (opcional) (en formato `.png` / `.gif`, máx. 250 KB codificada en Base64). Si el usuario no existe, se registra automáticamente.
+
 
 **Requisitos:** Python 3.8 o superior con `tkinter` (no requiere instalar librerías adicionales).
 * **Windows / macOS:** El instalador oficial de `python.org` ya incluye `tkinter`.
 * **GNU/Linux (Debian / Ubuntu):** `sudo apt install python3-tk`
+
+Instrucciones
+- Ejecutar el programa cliente "cliente.py"
+- 
 
 ```bash
 git clone https://github.com/crisgdl13-dotcom/DATO_REX__SISTEMAS_DISTRIBUIDOS.git
