@@ -41,7 +41,7 @@ El cliente se conecta por defecto al servidor del equipo en **`3.149.102.2`**, p
 3. Navega entre las pestañas: **1. Chat General**, **2. Mensaje Directo**, **3. Grupos** y **4. Canales**.
 4. Para probar los chats privados, grupos y canales en tiempo real, abre el cliente en dos o más computadoras (o terminales) con usuarios distintos.
 
-## Ejecutar el servidor
+## Ejecutar el servidor (En caso de ser necesario, ya que el servidor ya se encuentra en ejecución en 3.149.102.2:3001. Solo es necesario ejecutar el cliente.)
 
 **Requisitos:** Python 3.8+, `pyodbc`, **ODBC Driver 18 for SQL Server** y acceso a la base de datos `Dato_Rex_DB`.
 
