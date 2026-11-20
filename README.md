@@ -38,7 +38,7 @@ Instrucciones
 ```bash
 git clone https://github.com/crisgdl13-dotcom/DATO_REX__SISTEMAS_DISTRIBUIDOS.git
 cd DATO_REX__SISTEMAS_DISTRIBUIDOS
-python cliente.py        # en GNU/Linux o macOS: python3 cliente.py
+python cliente.py
 ```
 
 El cliente se conecta por defecto al servidor del equipo en **`3.149.102.2`**, puerto **`3001`** (definidos en las constantes `SERVIDOR_IP` y `SERVIDOR_PUERTO` al inicio de `cliente.py`).
