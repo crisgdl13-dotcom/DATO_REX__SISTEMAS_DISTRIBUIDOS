@@ -23,7 +23,7 @@ Clientes (Tkinter)  <--- TCP, un JSON por línea (\n) --->  servidor.py (puerto 
 
 ## Instrucciones - Cliente
 
-Paso 1. Instalar Git y Python 3 (en caso de no tenerlos instalados)
+* **Paso 1. Instalar Git y Python 3 (en caso de no tenerlos instalados)
 
 En Windows (PowerShell):
 
@@ -37,14 +37,14 @@ En GNU/Linux (Ubuntu / Debian):
 Bash
 sudo apt update && sudo apt install -y git python3 python3-tk
 
-Paso 2. Clonar el repositorio y entrar a la carpeta
+* **Paso 2. Clonar el repositorio y entrar a la carpeta
 Abra una terminal en la ubicación donde desee guardar el proyecto (por ejemplo, Descargas o Escritorio) y ejecute:
 
 Bash
 git clone https://github.com/crisgdl13-dotcom/DATO_REX__SISTEMAS_DISTRIBUIDOS.git
 cd DATO_REX__SISTEMAS_DISTRIBUIDOS
 
-Paso 3. Ejecutar la aplicación cliente
+* **Paso 3. Ejecutar la aplicación cliente
 Dentro de la carpeta DATO_REX__SISTEMAS_DISTRIBUIDOS, inicie el cliente gráfico:
 
 En Windows:
@@ -55,7 +55,7 @@ En GNU/Linux o macOS:
 Bash
 python3 cliente.py
 
-Paso 4. Acceso al sistema
+* **Paso 4. Acceso al sistema
 El cliente ya está configurado para conectarse automáticamente a nuestro servidor activo (3.149.102.2, puerto 3001). En la ventana de inicio, ingrese un nombre de usuario y contraseña (opcionalmente puede cargar una foto .png o .gif menor a 250 KB) y dé clic en Conectar / Registrar para probar las 4 secciones (Chat General, Mensaje Directo, Grupos —con el botón extra de expulsión— y Canales).
 
 El cliente se conecta por defecto al servidor del equipo en **`3.149.102.2`**, puerto **`3001`** (definidos en las constantes `SERVIDOR_IP` y `SERVIDOR_PUERTO` al inicio de `cliente.py`).
