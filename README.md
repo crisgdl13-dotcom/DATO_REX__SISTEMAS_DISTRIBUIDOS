@@ -43,6 +43,7 @@ Abra una terminal en la ubicación donde desee guardar el proyecto (por ejemplo,
 Bash
 git clone https://github.com/crisgdl13-dotcom/DATO_REX__SISTEMAS_DISTRIBUIDOS.git
 cd DATO_REX__SISTEMAS_DISTRIBUIDOS
+
 Paso 3. Ejecutar la aplicación cliente
 Dentro de la carpeta DATO_REX__SISTEMAS_DISTRIBUIDOS, inicie el cliente gráfico:
 
