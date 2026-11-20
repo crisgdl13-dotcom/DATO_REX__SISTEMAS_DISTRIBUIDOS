@@ -28,7 +28,7 @@ Clientes (Tkinter)  <--- TCP, un JSON por línea (\n) --->  servidor.py (puerto 
 * **GNU/Linux (Debian / Ubuntu):** `sudo apt install python3-tk`
 
 ```bash
-git clone [https://github.com/crisgdl13-dotcom/DATO_REX__SISTEMAS_DISTRIBUIDOS.git](https://github.com/crisgdl13-dotcom/DATO_REX__SISTEMAS_DISTRIBUIDOS.git)
+git clone https://github.com/crisgdl13-dotcom/DATO_REX__SISTEMAS_DISTRIBUIDOS.git
 cd DATO_REX__SISTEMAS_DISTRIBUIDOS
 python cliente.py        # en GNU/Linux o macOS: python3 cliente.py
 ```
