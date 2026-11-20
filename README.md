@@ -21,25 +21,42 @@ Clientes (Tkinter)  <--- TCP, un JSON por línea (\n) --->  servidor.py (puerto 
 * **Servidor (`servidor.py`):** Demonio concurrente sin interfaz gráfica (`threading` + `Lock`) que gestiona conexiones, autenticación, enrutamiento de mensajes y consultas SQL.
 * **Base de datos (`Dato_Rex_DB`):** Instancia de SQL Server en puerto `1433` que almacena usuarios, avatares, grupos, canales e historiales de mensajes.
 
-## Instrucciones / Cliente
-1. Ejecutar el programa cliente "cliente.py".
-2. Crear usuario y contraseña.
-3. Insertar foto de perfil de usuario (opcional) (en formato `.png` / `.gif`, máx. 250 KB codificada en Base64). Si el usuario no existe, se registra automáticamente.
+## Instrucciones - Cliente
 
+Paso 1. Instalar Git y Python 3 (en caso de no tenerlos instalados)
 
-**Requisitos:** Python 3.8 o superior con `tkinter` (no requiere instalar librerías adicionales).
-* **Windows / macOS:** El instalador oficial de `python.org` ya incluye `tkinter`.
-* **GNU/Linux (Debian / Ubuntu):** `sudo apt install python3-tk`
+En Windows (PowerShell):
 
-Instrucciones
-- Ejecutar el programa cliente "cliente.py"
-- 
+PowerShell
+winget install -e --id Git.Git
+winget install -e --id Python.Python.3.12
+(Si se instalan por primera vez, cerrar y abrir una nueva terminal para que reconozca los comandos).
 
-```bash
+En GNU/Linux (Ubuntu / Debian):
+
+Bash
+sudo apt update && sudo apt install -y git python3 python3-tk
+
+Paso 2. Clonar el repositorio y entrar a la carpeta
+Abra una terminal en la ubicación donde desee guardar el proyecto (por ejemplo, Descargas o Escritorio) y ejecute:
+
+Bash
 git clone https://github.com/crisgdl13-dotcom/DATO_REX__SISTEMAS_DISTRIBUIDOS.git
 cd DATO_REX__SISTEMAS_DISTRIBUIDOS
+Paso 3. Ejecutar la aplicación cliente
+Dentro de la carpeta DATO_REX__SISTEMAS_DISTRIBUIDOS, inicie el cliente gráfico:
+
+En Windows:
+
+PowerShell
 python cliente.py
-```
+En GNU/Linux o macOS:
+
+Bash
+python3 cliente.py
+
+Paso 4. Acceso al sistema
+El cliente ya está configurado para conectarse automáticamente a nuestro servidor activo (3.149.102.2, puerto 3001). En la ventana de inicio, ingrese un nombre de usuario y contraseña (opcionalmente puede cargar una foto .png o .gif menor a 250 KB) y dé clic en Conectar / Registrar para probar las 4 secciones (Chat General, Mensaje Directo, Grupos —con el botón extra de expulsión— y Canales).
 
 El cliente se conecta por defecto al servidor del equipo en **`3.149.102.2`**, puerto **`3001`** (definidos en las constantes `SERVIDOR_IP` y `SERVIDOR_PUERTO` al inicio de `cliente.py`).
 
