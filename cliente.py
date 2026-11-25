@@ -7,6 +7,7 @@ from tkinter import ttk, filedialog, messagebox, simpledialog
 
 SERVIDOR_IP = "3.149.102.2"
 SERVIDOR_PUERTO = 3001
+TEXTO_ELIMINADO = "🚫 Este mensaje fue eliminado"
 
 
 class WasapCliente:
@@ -26,6 +27,9 @@ class WasapCliente:
         self.grupo_activo = None
         self.canal_activo = None
         self.es_dueno_canal = False
+
+        self.meta_mensajes = {}
+        self.mensaje_seleccionado_tag = None
 
         self.construir_login()
 
@@ -141,6 +145,7 @@ class WasapCliente:
         self.entry_general = tk.Entry(bottom, font=("Arial", 10))
         self.entry_general.pack(side="left", fill="x", expand=True, padx=(0, 6))
         self.entry_general.bind("<Return>", lambda e: self.enviar_general())
+        tk.Button(bottom, text="🗑️ Eliminar", bg="#C62828", fg="white", command=lambda: self.eliminar_mensaje_seleccionado("general")).pack(side="right", padx=(4, 0))
         tk.Button(bottom, text="Enviar a Todos", bg="#128C7E", fg="white", command=self.enviar_general).pack(side="right")
 
         self.txt_general = tk.Text(tab, state="disabled", wrap="word", font=("Arial", 10))
@@ -174,6 +179,7 @@ class WasapCliente:
         self.entry_dm = tk.Entry(bottom, font=("Arial", 10))
         self.entry_dm.pack(side="left", fill="x", expand=True, padx=(0, 6))
         self.entry_dm.bind("<Return>", lambda e: self.enviar_dm())
+        tk.Button(bottom, text="🗑️ Eliminar", bg="#C62828", fg="white", command=lambda: self.eliminar_mensaje_seleccionado("dm")).pack(side="right", padx=(4, 0))
         tk.Button(bottom, text="Enviar Privado", bg="#128C7E", fg="white", command=self.enviar_dm).pack(side="right")
 
         self.txt_dm = tk.Text(der, state="disabled", wrap="word", font=("Arial", 10))
@@ -230,6 +236,7 @@ class WasapCliente:
         self.entry_grupo = tk.Entry(bottom, font=("Arial", 10))
         self.entry_grupo.pack(side="left", fill="x", expand=True, padx=(0, 6))
         self.entry_grupo.bind("<Return>", lambda e: self.enviar_grupo())
+        tk.Button(bottom, text="🗑️ Eliminar", bg="#C62828", fg="white", command=lambda: self.eliminar_mensaje_seleccionado("grupo")).pack(side="right", padx=(4, 0))
         tk.Button(bottom, text="Enviar al Grupo", bg="#128C7E", fg="white", command=self.enviar_grupo).pack(side="right")
 
         self.txt_grupo = tk.Text(der, state="disabled", wrap="word", font=("Arial", 10))
@@ -307,6 +314,7 @@ class WasapCliente:
         self.entry_canal = tk.Entry(bottom, font=("Arial", 10), state="disabled")
         self.entry_canal.pack(side="left", fill="x", expand=True, padx=(0, 6))
         self.entry_canal.bind("<Return>", lambda e: self.enviar_canal())
+        tk.Button(bottom, text="🗑️ Eliminar", bg="#C62828", fg="white", command=lambda: self.eliminar_mensaje_seleccionado("canal")).pack(side="right", padx=(4, 0))
         self.btn_canal = tk.Button(bottom, text="Difundir en Canal", bg="#128C7E", fg="white", state="disabled", command=self.enviar_canal)
         self.btn_canal.pack(side="right")
 
@@ -333,18 +341,103 @@ class WasapCliente:
                 self.enviar_json({"accion": "ENVIAR_CANAL", "id_canal": self.canal_activo, "contenido": msg})
                 self.entry_canal.delete(0, tk.END)
 
-    # ---------------- UTILIDADES DE TEXTO Y ESCUCHA ----------------
+    # ---------------- GESTIÓN Y ELIMINACIÓN DE MENSAJES ----------------
     def agregar_linea(self, widget, texto):
         widget.config(state="normal")
         widget.insert(tk.END, texto + "\n")
         widget.see(tk.END)
         widget.config(state="disabled")
 
+    def agregar_mensaje(self, widget, tipo, id_mensaje, remitente, contenido, prefijo=""):
+        widget.config(state="normal")
+        inicio = widget.index("end-1c")
+        texto_linea = f"{prefijo}[{remitente}]: {contenido}\n"
+        widget.insert(tk.END, texto_linea)
+        fin = widget.index("end-1c")
+
+        if id_mensaje is not None:
+            tag_msg = f"msg_{tipo}_{id_mensaje}"
+            widget.tag_add(tag_msg, inicio, fin)
+
+            if contenido == TEXTO_ELIMINADO:
+                widget.tag_config(tag_msg, foreground="#757575", font=("Arial", 10, "italic"))
+            elif remitente == self.username:
+                self.meta_mensajes[tag_msg] = {
+                    "tipo": tipo,
+                    "id_mensaje": id_mensaje,
+                    "widget": widget,
+                    "prefijo": prefijo,
+                }
+                widget.tag_bind(tag_msg, "<Button-1>", lambda _e, t=tag_msg: self.seleccionar_mensaje(t))
+                widget.tag_bind(tag_msg, "<Button-3>", lambda e, t=tag_msg: self.menu_contextual_mensaje(e, t))
+
+        widget.see(tk.END)
+        widget.config(state="disabled")
+
+    def seleccionar_mensaje(self, tag_msg):
+        if self.mensaje_seleccionado_tag and self.mensaje_seleccionado_tag in self.meta_mensajes:
+            ant = self.meta_mensajes[self.mensaje_seleccionado_tag]
+            ant["widget"].tag_config(self.mensaje_seleccionado_tag, background="")
+        self.mensaje_seleccionado_tag = tag_msg
+        if tag_msg in self.meta_mensajes:
+            self.meta_mensajes[tag_msg]["widget"].tag_config(tag_msg, background="#FFF9C4")
+
+    def menu_contextual_mensaje(self, event, tag_msg):
+        self.seleccionar_mensaje(tag_msg)
+        menu = tk.Menu(self.root, tearoff=0)
+        menu.add_command(label="🗑️ Eliminar mensaje para todos", command=lambda: self.solicitar_eliminar_tag(tag_msg))
+        menu.tk_popup(event.x_root, event.y_root)
+
+    def eliminar_mensaje_seleccionado(self, tipo):
+        tag_msg = self.mensaje_seleccionado_tag
+        if not tag_msg or tag_msg not in self.meta_mensajes or self.meta_mensajes[tag_msg]["tipo"] != tipo:
+            messagebox.showinfo(
+                "Eliminar mensaje",
+                "Haz clic sobre uno de tus propios mensajes (o clic derecho) para seleccionarlo y eliminarlo.",
+            )
+            return
+        self.solicitar_eliminar_tag(tag_msg)
+
+    def solicitar_eliminar_tag(self, tag_msg):
+        info = self.meta_mensajes.get(tag_msg)
+        if not info:
+            return
+        self.enviar_json({
+            "accion": "ELIMINAR_MENSAJE",
+            "tipo": info["tipo"],
+            "id_mensaje": info["id_mensaje"],
+        })
+
+    def reemplazar_mensaje_eliminado(self, widget, tipo, id_mensaje, remitente, texto, prefijo=""):
+        tag_msg = f"msg_{tipo}_{id_mensaje}"
+        rangos = widget.tag_ranges(tag_msg)
+        if rangos:
+            inicio, fin = rangos[0], rangos[1]
+            widget.config(state="normal")
+            widget.delete(inicio, fin)
+            nuevo_texto = f"{prefijo}[{remitente}]: {texto}\n"
+            widget.insert(inicio, nuevo_texto)
+            nuevo_fin = widget.index(f"{inicio} + {len(nuevo_texto)} chars")
+            widget.tag_remove(tag_msg, "1.0", tk.END)
+            widget.tag_add(tag_msg, inicio, nuevo_fin)
+            widget.tag_config(tag_msg, foreground="#757575", background="", font=("Arial", 10, "italic"))
+            widget.tag_unbind(tag_msg, "<Button-1>")
+            widget.tag_unbind(tag_msg, "<Button-3>")
+            widget.config(state="disabled")
+
+        self.meta_mensajes.pop(tag_msg, None)
+        if self.mensaje_seleccionado_tag == tag_msg:
+            self.mensaje_seleccionado_tag = None
+
     def limpiar_texto(self, widget):
+        if self.mensaje_seleccionado_tag in self.meta_mensajes:
+            if self.meta_mensajes[self.mensaje_seleccionado_tag]["widget"] == widget:
+                self.mensaje_seleccionado_tag = None
         widget.config(state="normal")
         widget.delete("1.0", tk.END)
         widget.config(state="disabled")
 
+    # ---------------- ESCUCHA DEL SERVIDOR ----------------
     def escuchar_servidor(self):
         buffer = ""
         try:
@@ -381,18 +474,18 @@ class WasapCliente:
                         self.list_usuarios.insert(tk.END, u)
 
         elif accion == "MSG_GENERAL":
-            self.agregar_linea(self.txt_general, f"[{data['remitente']}]: {data['contenido']}")
+            self.agregar_mensaje(self.txt_general, "general", data.get("id_mensaje"), data["remitente"], data["contenido"])
 
         elif accion == "HISTORIAL_DM_RESP":
             self.limpiar_texto(self.txt_dm)
             for m in data.get("mensajes", []):
-                self.agregar_linea(self.txt_dm, f"[{m['remitente']}]: {m['contenido']}")
+                self.agregar_mensaje(self.txt_dm, "dm", m.get("id_mensaje"), m["remitente"], m["contenido"])
 
         elif accion == "MSG_DM":
             sel = self.list_usuarios.curselection()
             activo = self.list_usuarios.get(sel[0]) if sel else None
             if activo in (data["remitente"], data["destino"]):
-                self.agregar_linea(self.txt_dm, f"[{data['remitente']}]: {data['contenido']}")
+                self.agregar_mensaje(self.txt_dm, "dm", data.get("id_mensaje"), data["remitente"], data["contenido"])
             elif data["remitente"] != self.username:
                 self.agregar_linea(self.txt_general, f"📩 (Nuevo mensaje directo de {data['remitente']})")
 
@@ -407,11 +500,11 @@ class WasapCliente:
             if data.get("id_grupo") == self.grupo_activo:
                 self.limpiar_texto(self.txt_grupo)
                 for m in data.get("mensajes", []):
-                    self.agregar_linea(self.txt_grupo, f"[{m['remitente']}]: {m['contenido']}")
+                    self.agregar_mensaje(self.txt_grupo, "grupo", m.get("id_mensaje"), m["remitente"], m["contenido"])
 
         elif accion == "MSG_GRUPO":
             if data.get("id_grupo") == self.grupo_activo:
-                self.agregar_linea(self.txt_grupo, f"[{data['remitente']}]: {data['contenido']}")
+                self.agregar_mensaje(self.txt_grupo, "grupo", data.get("id_mensaje"), data["remitente"], data["contenido"])
 
         elif accion == "EXPULSADO_GRUPO":
             if self.grupo_activo == data.get("id_grupo"):
@@ -436,7 +529,7 @@ class WasapCliente:
             self.es_dueno_canal = data["es_dueno"]
             self.limpiar_texto(self.txt_canal)
             for m in data.get("mensajes", []):
-                self.agregar_linea(self.txt_canal, f"[📢 {m['remitente']}]: {m['contenido']}")
+                self.agregar_mensaje(self.txt_canal, "canal", m.get("id_mensaje"), m["remitente"], m["contenido"], prefijo="📢 ")
 
             if self.es_dueno_canal:
                 self.lbl_canal_titulo.config(text=f"Canal: {data['nombre']} (Eres el dueño - Puedes publicar)")
@@ -450,7 +543,27 @@ class WasapCliente:
 
         elif accion == "MSG_CANAL":
             if data.get("id_canal") == self.canal_activo:
-                self.agregar_linea(self.txt_canal, f"[📢 {data['remitente']}]: {data['contenido']}")
+                self.agregar_mensaje(self.txt_canal, "canal", data.get("id_mensaje"), data["remitente"], data["contenido"], prefijo="📢 ")
+
+        elif accion == "MENSAJE_ELIMINADO":
+            tipo = data.get("tipo")
+            id_msg = data.get("id_mensaje")
+            remitente = data.get("remitente")
+            texto = data.get("texto", TEXTO_ELIMINADO)
+
+            if tipo == "general":
+                self.reemplazar_mensaje_eliminado(self.txt_general, "general", id_msg, remitente, texto)
+            elif tipo == "dm":
+                sel = self.list_usuarios.curselection()
+                activo = self.list_usuarios.get(sel[0]) if sel else None
+                if activo in (remitente, data.get("destino")):
+                    self.reemplazar_mensaje_eliminado(self.txt_dm, "dm", id_msg, remitente, texto)
+            elif tipo == "grupo":
+                if data.get("id_grupo") == self.grupo_activo:
+                    self.reemplazar_mensaje_eliminado(self.txt_grupo, "grupo", id_msg, remitente, texto)
+            elif tipo == "canal":
+                if data.get("id_canal") == self.canal_activo:
+                    self.reemplazar_mensaje_eliminado(self.txt_canal, "canal", id_msg, remitente, texto, prefijo="📢 ")
 
         elif accion == "ERROR":
             messagebox.showwarning("Aviso", data.get("msg", "Error"))
