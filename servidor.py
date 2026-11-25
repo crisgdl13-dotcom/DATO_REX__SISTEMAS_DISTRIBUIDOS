@@ -5,6 +5,7 @@ import pyodbc
 
 HOST = "0.0.0.0"
 PORT = 3001
+TEXTO_ELIMINADO = "🚫 Este mensaje fue eliminado"
 
 CONN_STR = (
     "DRIVER={ODBC Driver 18 for SQL Server};"
@@ -40,10 +41,15 @@ def broadcast_conectados():
         enviar_json(s, paquete)
 
 
-def broadcast_general(remitente, contenido):
+def broadcast_general(id_mensaje, remitente, contenido):
     with lock:
         conexiones = [info["sock"] for info in clientes_conectados.values()]
-    paquete = {"accion": "MSG_GENERAL", "remitente": remitente, "contenido": contenido}
+    paquete = {
+        "accion": "MSG_GENERAL",
+        "id_mensaje": id_mensaje,
+        "remitente": remitente,
+        "contenido": contenido,
+    }
     for s in conexiones:
         enviar_json(s, paquete)
 
@@ -112,13 +118,13 @@ def manejar_cliente(conn, addr):
                     enviar_json(conn, {"accion": "AUTH_RESP", "ok": True, "username": username, "foto_perfil": foto})
 
                     cur.execute("""
-                        SELECT TOP 30 u.username, m.contenido
+                        SELECT TOP 30 m.id_mensaje, u.username, m.contenido
                         FROM Mensajes_Generales m
                         JOIN Usuarios u ON m.id_remitente = u.id_usuario
                         ORDER BY m.id_mensaje ASC
                     """)
                     for r in cur.fetchall():
-                        enviar_json(conn, {"accion": "MSG_GENERAL", "remitente": r[0], "contenido": r[1]})
+                        enviar_json(conn, {"accion": "MSG_GENERAL", "id_mensaje": r[0], "remitente": r[1], "contenido": r[2]})
 
                     broadcast_conectados()
                     enviar_grupos_usuario(cur, conn, id_usuario_actual)
@@ -128,10 +134,11 @@ def manejar_cliente(conn, addr):
                     contenido = req.get("contenido", "").strip()
                     if contenido:
                         cur.execute(
-                            "INSERT INTO Mensajes_Generales (id_remitente, contenido) VALUES (?, ?)",
+                            "INSERT INTO Mensajes_Generales (id_remitente, contenido) OUTPUT INSERTED.id_mensaje VALUES (?, ?)",
                             (id_usuario_actual, contenido),
                         )
-                        broadcast_general(usuario_actual, contenido)
+                        id_msg = cur.fetchone()[0]
+                        broadcast_general(id_msg, usuario_actual, contenido)
 
                 elif accion == "ENVIAR_DM" and usuario_actual:
                     destino = req.get("destino", "").strip()
@@ -140,11 +147,13 @@ def manejar_cliente(conn, addr):
                     r_dest = cur.fetchone()
                     if r_dest and contenido:
                         cur.execute(
-                            "INSERT INTO Mensajes_Directos (id_remitente, id_destinatario, contenido) VALUES (?, ?, ?)",
+                            "INSERT INTO Mensajes_Directos (id_remitente, id_destinatario, contenido) OUTPUT INSERTED.id_mensaje VALUES (?, ?, ?)",
                             (id_usuario_actual, r_dest[0], contenido),
                         )
+                        id_msg = cur.fetchone()[0]
                         paquete = {
                             "accion": "MSG_DM",
+                            "id_mensaje": id_msg,
                             "remitente": usuario_actual,
                             "destino": destino,
                             "contenido": contenido,
@@ -157,14 +166,14 @@ def manejar_cliente(conn, addr):
                 elif accion == "HISTORIAL_DM" and usuario_actual:
                     otro = req.get("con_usuario", "").strip()
                     cur.execute("""
-                        SELECT u1.username, u2.username, m.contenido
+                        SELECT m.id_mensaje, u1.username, u2.username, m.contenido
                         FROM Mensajes_Directos m
                         JOIN Usuarios u1 ON m.id_remitente = u1.id_usuario
                         JOIN Usuarios u2 ON m.id_destinatario = u2.id_usuario
                         WHERE (u1.username = ? AND u2.username = ?) OR (u1.username = ? AND u2.username = ?)
                         ORDER BY m.id_mensaje ASC
                     """, (usuario_actual, otro, otro, usuario_actual))
-                    mensajes = [{"remitente": r[0], "destino": r[1], "contenido": r[2]} for r in cur.fetchall()]
+                    mensajes = [{"id_mensaje": r[0], "remitente": r[1], "destino": r[2], "contenido": r[3]} for r in cur.fetchall()]
                     enviar_json(conn, {"accion": "HISTORIAL_DM_RESP", "con_usuario": otro, "mensajes": mensajes})
 
                 elif accion == "CREAR_GRUPO" and usuario_actual:
@@ -191,9 +200,10 @@ def manejar_cliente(conn, addr):
                     contenido = req.get("contenido", "").strip()
                     if id_grupo and contenido:
                         cur.execute(
-                            "INSERT INTO Mensajes_Grupo (id_grupo, id_remitente, contenido) VALUES (?, ?)",
+                            "INSERT INTO Mensajes_Grupo (id_grupo, id_remitente, contenido) OUTPUT INSERTED.id_mensaje VALUES (?, ?, ?)",
                             (id_grupo, id_usuario_actual, contenido),
                         )
+                        id_msg = cur.fetchone()[0]
                         cur.execute("""
                             SELECT u.username
                             FROM Grupo_Miembros gm
@@ -203,6 +213,7 @@ def manejar_cliente(conn, addr):
                         paquete = {
                             "accion": "MSG_GRUPO",
                             "id_grupo": id_grupo,
+                            "id_mensaje": id_msg,
                             "remitente": usuario_actual,
                             "contenido": contenido,
                         }
@@ -214,13 +225,13 @@ def manejar_cliente(conn, addr):
                 elif accion == "HISTORIAL_GRUPO" and usuario_actual:
                     id_grupo = req.get("id_grupo")
                     cur.execute("""
-                        SELECT u.username, m.contenido
+                        SELECT m.id_mensaje, u.username, m.contenido
                         FROM Mensajes_Grupo m
                         JOIN Usuarios u ON m.id_remitente = u.id_usuario
                         WHERE m.id_grupo = ?
                         ORDER BY m.id_mensaje ASC
                     """, (id_grupo,))
-                    mensajes = [{"remitente": r[0], "contenido": r[1]} for r in cur.fetchall()]
+                    mensajes = [{"id_mensaje": r[0], "remitente": r[1], "contenido": r[2]} for r in cur.fetchall()]
                     enviar_json(conn, {"accion": "HISTORIAL_GRUPO_RESP", "id_grupo": id_grupo, "mensajes": mensajes})
 
                 elif accion == "SALGANSE_GRUPO" and usuario_actual:
@@ -251,6 +262,7 @@ def manejar_cliente(conn, addr):
                         enviar_json(conn, {
                             "accion": "MSG_GRUPO",
                             "id_grupo": id_grupo,
+                            "id_mensaje": None,
                             "remitente": "SISTEMA",
                             "contenido": "🚪 Sálganse del grupo, quiero estar solo. (Todos los demás fueron expulsados).",
                         })
@@ -286,13 +298,13 @@ def manejar_cliente(conn, addr):
                             cur.execute("INSERT INTO Canal_Suscriptores (id_canal, id_usuario) VALUES (?, ?)", (id_canal, id_usuario_actual))
 
                         cur.execute("""
-                            SELECT u.username, m.contenido
+                            SELECT m.id_mensaje, u.username, m.contenido
                             FROM Mensajes_Canal m
                             JOIN Usuarios u ON m.id_remitente = u.id_usuario
                             WHERE m.id_canal = ?
                             ORDER BY m.id_mensaje ASC
                         """, (id_canal,))
-                        mensajes = [{"remitente": r[0], "contenido": r[1]} for r in cur.fetchall()]
+                        mensajes = [{"id_mensaje": r[0], "remitente": r[1], "contenido": r[2]} for r in cur.fetchall()]
                         enviar_json(conn, {
                             "accion": "CANAL_UNIDO",
                             "id_canal": id_canal,
@@ -308,9 +320,10 @@ def manejar_cliente(conn, addr):
                     rc = cur.fetchone()
                     if rc and rc[0] == id_usuario_actual and contenido:
                         cur.execute(
-                            "INSERT INTO Mensajes_Canal (id_canal, id_remitente, contenido) VALUES (?, ?, ?)",
+                            "INSERT INTO Mensajes_Canal (id_canal, id_remitente, contenido) OUTPUT INSERTED.id_mensaje VALUES (?, ?, ?)",
                             (id_canal, id_usuario_actual, contenido),
                         )
+                        id_msg = cur.fetchone()[0]
                         cur.execute("""
                             SELECT u.username
                             FROM Canal_Suscriptores cs
@@ -320,6 +333,7 @@ def manejar_cliente(conn, addr):
                         paquete = {
                             "accion": "MSG_CANAL",
                             "id_canal": id_canal,
+                            "id_mensaje": id_msg,
                             "remitente": usuario_actual,
                             "contenido": contenido,
                         }
@@ -327,6 +341,94 @@ def manejar_cliente(conn, addr):
                             with lock:
                                 if r[0] in clientes_conectados:
                                     enviar_json(clientes_conectados[r[0]]["sock"], paquete)
+
+                elif accion == "ELIMINAR_MENSAJE" and usuario_actual:
+                    tipo = req.get("tipo")
+                    id_mensaje = req.get("id_mensaje")
+                    if tipo and id_mensaje:
+                        if tipo == "general":
+                            cur.execute("SELECT 1 FROM Mensajes_Generales WHERE id_mensaje = ? AND id_remitente = ?", (id_mensaje, id_usuario_actual))
+                            if cur.fetchone():
+                                cur.execute("UPDATE Mensajes_Generales SET contenido = ? WHERE id_mensaje = ?", (TEXTO_ELIMINADO, id_mensaje))
+                                with lock:
+                                    conns = [info["sock"] for info in clientes_conectados.values()]
+                                paquete = {"accion": "MENSAJE_ELIMINADO", "tipo": "general", "id_mensaje": id_mensaje, "remitente": usuario_actual, "texto": TEXTO_ELIMINADO}
+                                for s in conns:
+                                    enviar_json(s, paquete)
+
+                        elif tipo == "dm":
+                            cur.execute("""
+                                SELECT u2.username
+                                FROM Mensajes_Directos m
+                                JOIN Usuarios u2 ON m.id_destinatario = u2.id_usuario
+                                WHERE m.id_mensaje = ? AND m.id_remitente = ?
+                            """, (id_mensaje, id_usuario_actual))
+                            row_dm = cur.fetchone()
+                            if row_dm:
+                                destino_user = row_dm[0]
+                                cur.execute("UPDATE Mensajes_Directos SET contenido = ? WHERE id_mensaje = ?", (TEXTO_ELIMINADO, id_mensaje))
+                                paquete = {
+                                    "accion": "MENSAJE_ELIMINADO",
+                                    "tipo": "dm",
+                                    "id_mensaje": id_mensaje,
+                                    "remitente": usuario_actual,
+                                    "destino": destino_user,
+                                    "texto": TEXTO_ELIMINADO,
+                                }
+                                enviar_json(conn, paquete)
+                                with lock:
+                                    if destino_user in clientes_conectados and destino_user != usuario_actual:
+                                        enviar_json(clientes_conectados[destino_user]["sock"], paquete)
+
+                        elif tipo == "grupo":
+                            cur.execute("SELECT id_grupo FROM Mensajes_Grupo WHERE id_mensaje = ? AND id_remitente = ?", (id_mensaje, id_usuario_actual))
+                            row_g = cur.fetchone()
+                            if row_g:
+                                id_grupo = row_g[0]
+                                cur.execute("UPDATE Mensajes_Grupo SET contenido = ? WHERE id_mensaje = ?", (TEXTO_ELIMINADO, id_mensaje))
+                                cur.execute("""
+                                    SELECT u.username
+                                    FROM Grupo_Miembros gm
+                                    JOIN Usuarios u ON gm.id_usuario = u.id_usuario
+                                    WHERE gm.id_grupo = ?
+                                """, (id_grupo,))
+                                paquete = {
+                                    "accion": "MENSAJE_ELIMINADO",
+                                    "tipo": "grupo",
+                                    "id_grupo": id_grupo,
+                                    "id_mensaje": id_mensaje,
+                                    "remitente": usuario_actual,
+                                    "texto": TEXTO_ELIMINADO,
+                                }
+                                for r in cur.fetchall():
+                                    with lock:
+                                        if r[0] in clientes_conectados:
+                                            enviar_json(clientes_conectados[r[0]]["sock"], paquete)
+
+                        elif tipo == "canal":
+                            cur.execute("SELECT id_canal FROM Mensajes_Canal WHERE id_mensaje = ? AND id_remitente = ?", (id_mensaje, id_usuario_actual))
+                            row_c = cur.fetchone()
+                            if row_c:
+                                id_canal = row_c[0]
+                                cur.execute("UPDATE Mensajes_Canal SET contenido = ? WHERE id_mensaje = ?", (TEXTO_ELIMINADO, id_mensaje))
+                                cur.execute("""
+                                    SELECT u.username
+                                    FROM Canal_Suscriptores cs
+                                    JOIN Usuarios u ON cs.id_usuario = u.id_usuario
+                                    WHERE cs.id_canal = ?
+                                """, (id_canal,))
+                                paquete = {
+                                    "accion": "MENSAJE_ELIMINADO",
+                                    "tipo": "canal",
+                                    "id_canal": id_canal,
+                                    "id_mensaje": id_mensaje,
+                                    "remitente": usuario_actual,
+                                    "texto": TEXTO_ELIMINADO,
+                                }
+                                for r in cur.fetchall():
+                                    with lock:
+                                        if r[0] in clientes_conectados:
+                                            enviar_json(clientes_conectados[r[0]]["sock"], paquete)
 
                 db.close()
 
@@ -377,3 +479,19 @@ def iniciar_servidor():
 
 if __name__ == "__main__":
     iniciar_servidor()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
