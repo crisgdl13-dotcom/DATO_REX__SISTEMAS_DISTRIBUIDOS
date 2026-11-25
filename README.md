@@ -10,6 +10,9 @@
 * **Grupos:** Creación de grupos seleccionando usuarios conectados; los mensajes se envían y almacenan únicamente para los integrantes del grupo.
   * **Función extra (Meme):** Botón *"Sálganse del grupo, quiero estar solo"* que expulsa a todos los demás miembros del grupo activo tanto en tiempo real como en la base de datos.
 * **Canales de difusión:** Cualquier usuario puede crear un canal; únicamente el dueño puede publicar mensajes, mientras que los suscriptores pueden unirse, consultar el historial y leer en tiempo real (con barra de escritura bloqueada).
+* *Eliminación de mensajes:* Cada usuario puede seleccionar o hacer clic derecho sobre sus propios mensajes (en Chat General, DM, Grupos o Canales) para borrarlos para todos en tiempo real y en la base de datos (🚫 Este mensaje fue eliminado).
+*
+
 
 ## Arquitectura
 
@@ -102,6 +105,7 @@ Cada mensaje se envía como un objeto **JSON en una sola línea (UTF-8) terminad
 | `CREAR_CANAL` | `nombre` |
 | `UNIRSE_CANAL` | `id_canal` |
 | `ENVIAR_CANAL` | `id_canal`, `contenido` |
+| `ELIMINAR_MENSAJE` | `tipo` (`general`, `dm`, `grupo`, `canal`), `id_mensaje` |
 
 ### Servidor → Cliente
 
@@ -119,6 +123,7 @@ Cada mensaje se envía como un objeto **JSON en una sola línea (UTF-8) terminad
 | `LISTA_CANALES` | `canales` (lista de `id_canal`, `nombre`, `dueno`) |
 | `CANAL_UNIDO` | `id_canal`, `nombre`, `es_dueno`, `mensajes` |
 | `MSG_CANAL` | `id_canal`, `remitente`, `contenido` |
+| `MENSAJE_ELIMINADO` | `tipo`, `id_mensaje`, `remitente`, `texto` (más `destino`, `id_grupo` o `id_canal` según el chat) |**
 | `ERROR` | `msg` |
 
 ## Estructura del repositorio
